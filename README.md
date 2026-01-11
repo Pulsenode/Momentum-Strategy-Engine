@@ -16,3 +16,14 @@ The program also helps usrs save time and focus on the most relevant opportuniti
 
 #### This project is designed as a learning experience and should not be considered financial advice.
 
+## 📋Installation
+
+```
+npm install
+```
+To install addiotional package 
+
+```
+npm start
+```
+To start the program
