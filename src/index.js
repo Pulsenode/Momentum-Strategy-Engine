@@ -12,13 +12,12 @@ console.log("Stock Analysis starting");
 const sp500 = await API_GET("sp500_constituent", "");
   
   if (sp500) {
-    // On garde les 100 premiers pour ton analyse de Momentum
     const top100 = sp500.slice(0, 100);
     
     console.log(`Liste récupérée ! Nombre d'actions : ${sp500.length}`);
     console.log("Analyse du Top 100 lancée...");
     
-    // C'est ici que tu feras ta boucle plus tard
+
     console.log("Première action du top :", top100[0].symbol); 
   }
 }
