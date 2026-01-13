@@ -1,45 +1,53 @@
-//https://financialmodelingprep.com/stable/search-symbol?query=AAPL&apikey=RX4VBBM2yKP35M35NbHPNqkdwBADjd4e
-
 require ('dotenv').config();
 
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
 
 
-async function demarrerAnalyse() {
-console.log("Stock Analysis starting");
-
-const sp500 = await API_GET("sp500_constituent", "");
-  
-  if (sp500) {
-    const top100 = sp500.slice(0, 100);
-    
-    console.log(`Liste récupérée ! Nombre d'actions : ${sp500.length}`);
-    console.log("Analyse du Top 100 lancée...");
-    
-
-    console.log("Première action du top :", top100[0].symbol); 
-  }
-}
-
-demarrerAnalyse();
-
-
-async function API_GET(endpoint, queryParam = "") {
+async function fetchFromAPI(endpoint, symbol = "") {
   try {
-    const separator = queryParam ? "/" : "";
 
-    const url = `${BASE_URL}${endpoint}${separator}?${queryParam}&apikey=${API_KEY}`;
+    const url = `${BASE_URL}${endpoint}${symbol ? `/${symbol}` : ''}?apikey=${API_KEY}`;
 
     const response = await fetch(url);
-    if (!response.ok) {throw new Error(`HTTP error! status: ${response.status}`)};
+    if (!response.ok) {
+      throw new Error(`HTTP error : ${response.status}`)
+    };
 
     return await response.json();
   } catch (error) {
-    console.error("Erreur lors de la récupération des données :", error.message);
+    console.error(`[API ERROR] sur ${endpoint}:`, error.message);
     return null;
   }
 }
 
 
+async function demarrerAnalyse() {
+  console.log("🚀 Stock Analysis starting...");
 
+  const sp500 = await fetchFromAPI("sp500_constituent");
+  
+  if (!sp500 || sp500.length === 0) {
+    console.error("❌ Failed to fetch S&P 500 list. Please check your API key.");
+    return; 
+  }
+    
+  const top100 = sp500.slice(0, 100);
+  
+  console.log(`✅ List successfully retrieved! ${sp500.length} stocks found.`);
+  console.log(`🔍 Launching momentum analysis on the top 100...`);
+
+  for (const stock of top100) {
+
+  console.log(`Processing: ${stock.symbol} (${stock.name})`);
+  const history = await fetchFromAPI("historical-price-full", stock.symbol);
+  console.log(history);
+
+}
+
+ if (history) {
+      console.log(`📊 Data received for ${stock.symbol}`);
+    }
+}
+
+demarrerAnalyse();
