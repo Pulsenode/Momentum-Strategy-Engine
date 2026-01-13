@@ -3,7 +3,7 @@ require('dotenv').config();
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
 
-// 1. FONCTION DE RÉCUPÉRATION (Pure et simple)
+// 1. DATA RECOVERY
 async function fetchFromAPI(endpoint, symbol = "") {
   try {
     const url = `${BASE_URL}${endpoint}${symbol ? `/${symbol}` : ''}?apikey=${API_KEY}`;
@@ -16,7 +16,7 @@ async function fetchFromAPI(endpoint, symbol = "") {
   }
 }
 
-// 2. FONCTION DE CALCUL (Dédiée aux mathématiques)
+// 2. CALCULUS
 function calculateMomentumScore(history) {
   if (!history || history.length <= 126) return 0;
   try {
@@ -35,8 +35,8 @@ function calculateMomentumScore(history) {
   }
 }
 
-// 3. LE CHEF D'ORCHESTRE (Logique métier)
-async function demarrerAnalyse() {
+// 3. ANALYSIS
+async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
 
   const sp500 = await fetchFromAPI("sp500_constituent");
@@ -50,30 +50,35 @@ async function demarrerAnalyse() {
   for (const stock of top100) {
     const data = await fetchFromAPI("historical-price-full", stock.symbol);
 
-    if (data && data.historical) {
-      const score = calculateMomentumScore(data.historical);
+    if (data && data.historical && data.historical.length > 0) {
+
+      const score = calculateMomentumScore(data.historical); 
+      const lastPrice = data.historical[0].close;            
+
       results.push({
-        symbol: stock.symbol,
-        name: stock.name,
-        momentum: score
+        Symbol: stock.symbol,
+        Name: stock.name,
+        Price: `${lastPrice.toFixed(2)} $`,
+        Momentum: `${(score * 100).toFixed(2)} %`,
+        rawScore: score 
       });
+
       console.log(`[${results.length}/100] Scanned: ${stock.symbol}`);
     }
-    // Pause pour respecter les limites de l'API
+
     await new Promise(res => setTimeout(res, 200)); 
   }
 
-  console.log("✅ Analysis complete!");
+  console.log("\n✅ Analysis complete!");
 
-  // --- PHASE FINALE : LE TRI (Placé ici, il s'exécutera enfin !) ---
-  console.log("\n--- 🏆 TOP 3 MOMENTUM ---");
+  // Sorting and displaying top 3 results
+  results.sort((a, b) => b.rawScore - a.rawScore);
   
-  results.sort((a, b) => b.momentum - a.momentum);
+  const top3 = results.slice(0, 3);
 
-  const winners = results.slice(0, 3);
-  winners.forEach((winner, index) => {
-    console.log(`${index + 1}. ${winner.symbol} (${winner.name}) : ${(winner.momentum * 100).toFixed(2)}%`);
-  });
+  console.log("\n🏆 TOP 3 MOMENTUM RECOMMANDATIONS :");
+  console.table(top3, ["Symbol", "Name", "Price", "Momentum"]);
+
 }
 
-demarrerAnalyse();
+startAnalysis();
