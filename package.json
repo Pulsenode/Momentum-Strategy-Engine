@@ -1,14 +1,13 @@
 {
   "name": "MSE",
   "version": "1.0.0",
-  "type":"commonjs",
-    "scripts": {
+  "type": "commonjs",
+  "scripts": {
     "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "resend": "^6.7.0"
   }
-
 }

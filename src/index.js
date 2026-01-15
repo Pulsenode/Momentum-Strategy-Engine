@@ -3,6 +3,9 @@ require('dotenv').config();
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
 
+
+
+
 // 1. DATA RECOVERY
 async function fetchFromAPI(endpoint, symbol = "") {
   try {
@@ -15,6 +18,10 @@ async function fetchFromAPI(endpoint, symbol = "") {
     return null;
   }
 }
+
+
+
+
 
 // 2. CALCULUS
 function calculateMomentumScore(history) {
@@ -29,15 +36,68 @@ function calculateMomentumScore(history) {
     const m3 = (c0 - c63) / c63;
     const m6 = (c0 - c126) / c126;
 
-    return (m1 + m3 + m6) / 3;
+    return (m1 + m3 + m6);
   } catch (error) {
     return 0; 
   }
 }
 
+
+
+// EMAIL TESTING WITH RESEND
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function envoyerEmailRapport(top3) {
+ 
+  const tableRows = top3.map(stock => `
+    <tr>
+      <td style="border: 1px solid #ddd; padding: 8px;"><b>${stock.Symbol}</b></td>
+      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Name}</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Price}</td>
+      <td style="border: 1px solid #ddd; padding: 8px; color: green;">${stock.Momentum}</td>
+    </tr>
+  `).join('');
+
+  const htmlContent = `
+    <h2>🏆 Top 3 Momentum - Rapport Hebdomadaire</h2>
+    <p>Voici les meilleures opportunités détectées par ton scanner :</p>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead>
+        <tr style="background-color: #f2f2f2;">
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Symbole</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nom</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Prix</th>
+          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Momentum</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRows}
+      </tbody>
+    </table>
+    <p><br><i>Ce rapport a été généré automatiquement par ton programme.</i></p>
+  `;
+
+  try {
+    const data = await resend.emails.send({
+      from: 'MomentumScanner <onboarding@resend.dev>',
+      to: ['dedieuclementpro@gmail.com'], 
+      subject: '📊 Ton Rapport Momentum Hebdomadaire',
+      html: htmlContent,
+    });
+    console.log("📧 Email envoyé avec succès !", data.id);
+  } catch (error) {
+    console.error("❌ Erreur lors de l'envoi de l'email :", error);
+  }
+}
+
+
+
 // 3. ANALYSIS
 async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
+
+
 
   const sp500 = await fetchFromAPI("sp500_constituent");
   if (!sp500) return;
@@ -78,6 +138,8 @@ async function startAnalysis() {
 
   console.log("\n🏆 TOP 3 MOMENTUM RECOMMANDATIONS :");
   console.table(top3, ["Symbol", "Name", "Price", "Momentum"]);
+
+  await envoyerEmailRapport(top3);
 
 }
 
