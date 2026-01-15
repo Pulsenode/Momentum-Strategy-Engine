@@ -42,12 +42,12 @@ async function startAnalysis() {
   const sp500 = await fetchFromAPI("sp500_constituent");
   if (!sp500) return;
      
-  const top100 = sp500.slice(0, 100);
+  const allStocks = sp500;
   let results = [];
 
-  console.log(`🔍 Launching momentum analysis on 100 stocks...`);
+  console.log(`🔍 Launching momentum analysis on ${allStocks.length} stocks...`);
 
-  for (const stock of top100) {
+  for (const stock of allStocks) {
     const data = await fetchFromAPI("historical-price-full", stock.symbol);
 
     if (data && data.historical && data.historical.length > 0) {
@@ -63,7 +63,7 @@ async function startAnalysis() {
         rawScore: score 
       });
 
-      console.log(`[${results.length}/100] Scanned: ${stock.symbol}`);
+      console.log(`[${results.length}/${allStocks.length}] Scanned: ${stock.symbol}`);
     }
 
     await new Promise(res => setTimeout(res, 200)); 
@@ -82,3 +82,4 @@ async function startAnalysis() {
 }
 
 startAnalysis();
+
