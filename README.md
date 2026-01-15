@@ -28,6 +28,13 @@ npm start
 ```
 To start the program
 
+```
+npm install resend
+```
+To install Resend for sending e-mail 
+
+
+
 
 ## 📝The process
 
@@ -42,6 +49,9 @@ To check the data validation, i have implemented safety checks to exclude empty 
 The next step was to store the data by adding the object "results" and creating a "dual score" system: using a rawScore for prices mathematical sorting and a formatted string (with symbols and rounded decimals) for the user interface.
 
 I have also integrated a console.table() for the top 3 stocks, prodviding a clean, spreadsheet-like view of the top 3 recommendations including Symbol, Name, Price and Momentum Score.
+In the continuity, i have implemented an e-mail system that sends automatically a report of the top 3 recomendations of S&P 500.
+
+
 
 ## 🧠What I Learned 
 
