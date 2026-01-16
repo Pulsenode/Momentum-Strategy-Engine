@@ -18,6 +18,8 @@ The program also helps usrs save time and focus on the most relevant opportuniti
 
 ## 📋Installation
 
+This are the necessary packages to install in order to use the program:
+
 ```
 npm install
 ```
@@ -33,6 +35,10 @@ npm install resend
 ```
 To install Resend for sending e-mail 
 
+```
+npm install mysql2
+```
+To install mysql for the database 
 
 
 
