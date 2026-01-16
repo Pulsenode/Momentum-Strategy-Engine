@@ -97,7 +97,7 @@ async function envoyerEmailRapport(top3) {
 // 3. ANALYSIS
 async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
-
+  console.log(`Tentative: ${process.env.DB_USER} sur ${process.env.DB_NAME} (Port: ${process.env.DB_PORT})`);
 
   try {
     const connection = await mysql.createConnection({
