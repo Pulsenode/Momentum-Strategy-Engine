@@ -97,7 +97,6 @@ async function envoyerEmailRapport(top3) {
 // 3. ANALYSIS
 async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
-  console.log(`Tentative: ${process.env.DB_USER} sur ${process.env.DB_NAME} (Port: ${process.env.DB_PORT})`);
 
   try {
     const connection = await mysql.createConnection({
@@ -107,6 +106,20 @@ async function startAnalysis() {
       password: process.env.DB_PASS,
       database: process.env.DB_NAME
     });
+
+    console.log("🔍 Lecture de la table TEST en cours...");
+
+    // 2. Exécuter la requête SQL
+    // On utilise [rows] pour récupérer directement le tableau de données
+    const [rows] = await connection.execute('SELECT * FROM TEST');
+
+    // 3. Affichage
+    if (rows.length === 0) {
+      console.log("📋 La table TEST est vide.");
+    } else {
+      console.log("✅ Données récupérées depuis la table TEST :");
+      console.table(rows); // Utiliser console.table rend le résultat très lisible
+    }
 
     console.log("✅ Connexion réussie ! ID de connexion :", connection.threadId);
 
