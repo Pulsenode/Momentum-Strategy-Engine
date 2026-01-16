@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const mysql = require('mysql2/promise');
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
 
@@ -96,6 +97,24 @@ async function envoyerEmailRapport(top3) {
 // 3. ANALYSIS
 async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
+
+
+  try {
+    const connection = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASS,
+      database: process.env.DB_NAME
+    });
+
+    console.log("✅ Connexion réussie ! ID de connexion :", connection.threadId);
+
+  } catch (error) {
+    console.error("❌ Échec de la connexion :");
+    console.error("Code d'erreur :", error.code); // ex: 'ECONNREFUSED'
+    console.error("Message :", error.message);
+  }
+
 
 
 
