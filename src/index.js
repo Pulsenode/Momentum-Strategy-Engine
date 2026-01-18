@@ -95,38 +95,42 @@ async function envoyerEmailRapport(top3) {
 
 
 // 3. ANALYSIS
+
 async function startAnalysis() {
   console.log("🚀 Stock Analysis starting...");
 
+  let connection; 
+
   try {
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT),
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME
+ 
+    connection = await mysql.createConnection({
+      host: 'localhost',
+      user: 'root',
+      password: process.env.DB_PASSWORD, 
+      database: 'MSE'
     });
 
-    console.log("🔍 Lecture de la table TEST en cours...");
+    console.log("🚀 Connexion réussie à MariaDB ! ID :", connection.threadId);
 
-    // 2. Exécuter la requête SQL
-    // On utilise [rows] pour récupérer directement le tableau de données
-    const [rows] = await connection.execute('SELECT * FROM TEST');
+    const [rows] = await connection.execute('SELECT * FROM TRADES_HISTORY');
 
-    // 3. Affichage
     if (rows.length === 0) {
-      console.log("📋 La table TEST est vide.");
+      console.log("📋 La table TRADES_HISTORY est vide.");
     } else {
-      console.log("✅ Données récupérées depuis la table TEST :");
-      console.table(rows); // Utiliser console.table rend le résultat très lisible
+      console.log("✅ Données actuelles dans la table TRADES_HISTORY :");
+      console.table(rows); 
     }
 
-    console.log("✅ Connexion réussie ! ID de connexion :", connection.threadId);
-
   } catch (error) {
-    console.error("❌ Échec de la connexion :");
-    console.error("Code d'erreur :", error.code); // ex: 'ECONNREFUSED'
+    console.error("❌ Erreur :");
+    console.error("Code :", error.code);
     console.error("Message :", error.message);
+  } finally {
+
+    if (connection) {
+      await connection.end();
+      console.log("🔌 Connexion fermée proprement.");
+    }
   }
 
 
