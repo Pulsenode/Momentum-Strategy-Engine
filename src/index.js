@@ -3,6 +3,7 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
+const BUDGET_PAR_ACTION = 10000;
 
 
 
@@ -49,16 +50,19 @@ function calculateMomentumScore(history) {
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function envoyerEmailRapport(top3, ventes, achats) {
+async function envoyerEmailRapport(top3, ventes, achats, erreurs) {
  
 const ventesHtml = ventes.length > 0 
-    ? ventes.map(v => `<li style="color: #d9534f;">❌ <b>Vendu</b> : ${v.symbol} à ${v.price}$</li>`).join('')
+    ? ventes.map(v => `<li style="color: #d9534f;">❌ <b>Vendu</b> : ${v.qty} x ${v.symbol} à ${v.price}$</li>`).join('')
     : "<li>Aucune vente effectuée.</li>";
 
-  // 2. On crée le texte pour les achats
-  const achatsHtml = achats.length > 0 
-    ? achats.map(a => `<li style="color: #5cb85c;">✅ <b>Acheté</b> : ${a.symbol} à ${a.price}$</li>`).join('')
+const achatsHtml = achats.length > 0 
+    ? achats.map(a => `<li style="color: #5cb85c;">✅ <b>Acheté</b> : ${a.qty} x ${a.symbol} à ${a.price}$</li>`).join('')
     : "<li>Aucun nouvel achat.</li>";
+
+const erreursHtml = erreurs.length > 0 
+    ? erreurs.map(e => `<li style="color: #f0ad4e;">⚠️ <b>Budget insuffisant</b> : ${e.symbol} (Prix: ${e.price}$)</li>`).join('')
+    : "";
 
   // 3. Le tableau du Top 3
   const tableRows = top3.map(stock => `
@@ -70,7 +74,7 @@ const ventesHtml = ventes.length > 0
     </tr>
   `).join('');
 
-  const htmlContent = `
+const htmlContent = `
     <div style="font-family: Arial, sans-serif; color: #333;">
       <h2>📊 Rapport d'Activité du Bot</h2>
       
@@ -79,7 +83,7 @@ const ventesHtml = ventes.length > 0
         <ul style="list-style: none; padding-left: 0;">
           ${ventesHtml}
           ${achatsHtml}
-        </ul>
+          ${erreursHtml}  </ul>
       </div>
 
       <h3>🏆 Top 3 Momentum Actuel :</h3>
@@ -168,11 +172,11 @@ async function startAnalysis() {
     console.log("\n🏆 TOP 3 MOMENTUM RECOMMANDATIONS :");
     console.table(top3);
 
-    const BUDGET_TOTAL = 1500;
-    const BUDGET_PAR_ACTION = 500;
+
     const today = new Date().toISOString().split('T')[0];
     let ventesDuJour = [];
     let achatsDuJour = [];
+    let erreursBudget = [];
 
     //CHECKING OPEN POSITIONS TO SELL IF NEEDED
 
@@ -193,7 +197,11 @@ async function startAnalysis() {
           [sellPrice, today, position.id]
         );
 
-        ventesDuJour.push({ symbol: position.symbol, price: sellPrice });
+          ventesDuJour.push({ 
+      symbol: position.symbol, 
+      price: sellPrice, 
+      qty: position.quantity // On récupère la quantité depuis la DB
+  });
         console.log(`⚠️ VENDU : ${position.symbol} (sorti du Top 3)`);
       }
     }
@@ -209,21 +217,32 @@ async function startAnalysis() {
         if (existing.length > 0) {
           console.log(`⏭️  ${stock.Symbol} est déjà en portefeuille, on ne fait rien.`);
         } else {
-          const quantity = BUDGET_PAR_ACTION / stock.Price;
-          await connection.execute(
-                `INSERT INTO TRADES_HISTORY (symbol, buy_price, quantity, status, entry_date, momentum_score) 
-                VALUES (?, ?, ?, ?, ?, ?)`,
-                [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
-          );
 
-          achatsDuJour.push({ symbol: stock.Symbol, price: stock.Price });
+          const quantity = Math.floor(BUDGET_PAR_ACTION / stock.Price);
 
-          console.log(`🛒 NOUVEL ACHAT : ${stock.Symbol}`);
+         if (quantity > 0) {
+            await connection.execute(
+                  `INSERT INTO TRADES_HISTORY (symbol, buy_price, quantity, status, entry_date, momentum_score) 
+                  VALUES (?, ?, ?, ?, ?, ?)`,
+                  [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
+            );
+
+            achatsDuJour.push({ 
+                symbol: stock.Symbol, 
+                price: stock.Price, 
+                qty: quantity 
+            });
+
+            console.log(`🛒 NOUVEL ACHAT : ${quantity} x ${stock.Symbol}`);
+          } else {
+
+            erreursBudget.push({ symbol: stock.Symbol, price: stock.Price });
+            console.log(`⚠️ Budget trop faible pour acheter ${stock.Symbol} (Prix: ${stock.Price}$, Budget: ${BUDGET_PAR_ACTION}$)`);
+          }
         }
     }
 
-    await envoyerEmailRapport(top3, ventesDuJour, achatsDuJour);
-
+    await envoyerEmailRapport(top3, ventesDuJour, achatsDuJour, erreursBudget);
   console.log("Analysis and update successfully completed.");
 
     // 6. SENDING THE REPORT BY EMAIL
