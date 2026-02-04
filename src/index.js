@@ -93,7 +93,6 @@ async function envoyerEmailRapport(top3) {
 }
 
 
-
 // 3. ANALYSIS
 
 async function startAnalysis() {
@@ -112,72 +111,124 @@ async function startAnalysis() {
 
     console.log("🚀 Connexion réussie à MariaDB ! ID :", connection.threadId);
 
-    const [rows] = await connection.execute('SELECT * FROM TRADES_HISTORY');
+    // 2. S&P 500 RECOVERY
+    const sp500 = await fetchFromAPI("sp500_constituent");
+    if (!sp500) return;
+       
+    let results = [];
+    console.log(`🔍 Launching momentum analysis on ${sp500.length} stocks...`);
 
-    if (rows.length === 0) {
-      console.log("📋 La table TRADES_HISTORY est vide.");
-    } else {
-      console.log("✅ Données actuelles dans la table TRADES_HISTORY :");
-      console.table(rows); 
+    // 3. SCAN OF 503 STOCKS
+    for (const stock of sp500) {
+      const data = await fetchFromAPI("historical-price-full", stock.symbol);
+      if (data && data.historical && data.historical.length > 0) {
+        const score = calculateMomentumScore(data.historical); 
+        const lastPrice = data.historical[0].close;            
+
+        results.push({
+          Symbol: stock.symbol,
+          Name: stock.name,
+          Price: lastPrice, // We keep the raw number for the DB
+          Momentum: `${(score * 100).toFixed(2)} %`,
+          rawScore: score 
+        });
+        console.log(`[${results.length}/${sp500.length}] Scanned: ${stock.symbol}`);
+      }
+      // Short delay for the API
+      await new Promise(res => setTimeout(res, 150)); 
     }
+
+    // 4. SORTING AND TOP 3
+    results.sort((a, b) => b.rawScore - a.rawScore);
+    const top3 = results.slice(0, 3);
+    console.log("\n🏆 TOP 3 MOMENTUM RECOMMANDATIONS :");
+    console.table(top3);
+
+    const BUDGET_TOTAL = 1500;
+    const BUDGET_PAR_ACTION = BUDGET_TOTAL / 3;
+    const today = new Date().toISOString().split('T')[0];
+
+    //CHECKING OPEN POSITIONS TO SELL IF NEEDED
+
+    const [openPositions] = await connection.execute(
+    "SELECT * FROM TRADES_HISTORY WHERE status = 'OPEN'"
+    );
+    for (const position of openPositions) {
+      const stillInTop3 = top3.find(s => s.Symbol === position.symbol);
+
+      if (!stillInTop3) {
+        const currentData = results.find(r => r.Symbol === position.symbol);
+        const sellPrice = currentData ? currentData.Price : position.buy_price;
+
+        await connection.execute(
+          `UPDATE TRADES_HISTORY 
+          SET sell_price = ?, status = 'CLOSED', exit_date = ? 
+          WHERE id = ?`,
+          [sellPrice, today, position.id]
+        );
+        console.log(`⚠️ VENDU : ${position.symbol} (sorti du Top 3)`);
+      }
+    }
+
+
+    // CHEKING STOCKS POSITION TO AVOID DUPLICATE PURCHASES
+
+    for (const stock of top3) {
+        const [existing] = await connection.execute(
+          "SELECT id FROM TRADES_HISTORY WHERE symbol = ? AND status = 'OPEN'",
+          [stock.Symbol]
+        );
+        if (existing.length > 0) {
+          console.log(`⏭️  ${stock.Symbol} est déjà en portefeuille, on ne fait rien.`);
+        } else {
+          const quantity = BUDGET_PAR_ACTION / stock.Price;
+          await connection.execute(
+                `INSERT INTO TRADES_HISTORY (symbol, buy_price, quantity, status, entry_date, momentum_score) 
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
+          );
+          console.log(`🛒 NOUVEL ACHAT : ${stock.Symbol}`);
+        }
+    }
+
+    await envoyerEmailRapport(top3);
+
+  console.log("Analysis and update successfully completed.");
+
+    // 6. SENDING THE REPORT BY EMAIL
 
   } catch (error) {
     console.error("❌ Erreur :");
     console.error("Code :", error.code);
     console.error("Message :", error.message);
-  } finally {
 
-    if (connection) {
-      await connection.end();
-      console.log("🔌 Connexion fermée proprement.");
-    }
-  }
-
-
-
-
-  const sp500 = await fetchFromAPI("sp500_constituent");
-  if (!sp500) return;
-     
-  const allStocks = sp500;
-  let results = [];
-
-  console.log(`🔍 Launching momentum analysis on ${allStocks.length} stocks...`);
-
-  for (const stock of allStocks) {
-    const data = await fetchFromAPI("historical-price-full", stock.symbol);
-
-    if (data && data.historical && data.historical.length > 0) {
-
-      const score = calculateMomentumScore(data.historical); 
-      const lastPrice = data.historical[0].close;            
-
-      results.push({
-        Symbol: stock.symbol,
-        Name: stock.name,
-        Price: `${lastPrice.toFixed(2)} $`,
-        Momentum: `${(score * 100).toFixed(2)} %`,
-        rawScore: score 
+    // If the error comes from the database (Code ER_ACCESS_DENIED_ERROR, ECONNREFUSED, etc.)
+    if (error.code && (error.code.includes('ER_') || error.code === 'ECONNREFUSED')) {
+      console.log("📧 Envoi de l'alerte mail...");
+      
+      await resend.emails.send({
+        from: 'MomentumScanner <onboarding@resend.dev>',
+        to: ['dedieuclementpro@gmail.com'], 
+        subject: '⚠️ ALERTE : Erreur de connexion Base de Données',
+        html: `
+          <h1>Problème sur ton Bot Momentum</h1>
+          <p>Le programme s'est arrêté car il ne peut pas se connecter à MariaDB.</p>
+          <p><b>Erreur :</b> ${error.message}</p>
+          <p>Date : ${new Date().toLocaleString()}</p>
+        `,
       });
 
-      console.log(`[${results.length}/${allStocks.length}] Scanned: ${stock.symbol}`);
+      console.log("🛑 Programme stoppé suite à l'erreur DB.");
+      process.exit(1);
     }
 
-    await new Promise(res => setTimeout(res, 200)); 
+
+} finally {
+    if (connection) {
+      await connection.end();
+      console.log("🔌 Connexion fermée.");
+    }
   }
-
-  console.log("\n✅ Analysis complete!");
-
-  // Sorting and displaying top 3 results
-  results.sort((a, b) => b.rawScore - a.rawScore);
-  
-  const top3 = results.slice(0, 3);
-
-  console.log("\n🏆 TOP 3 MOMENTUM RECOMMANDATIONS :");
-  console.table(top3, ["Symbol", "Name", "Price", "Momentum"]);
-
-  await envoyerEmailRapport(top3);
-
 }
 
 startAnalysis();
