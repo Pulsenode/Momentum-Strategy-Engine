@@ -49,44 +49,65 @@ function calculateMomentumScore(history) {
 const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-async function envoyerEmailRapport(top3) {
+async function envoyerEmailRapport(top3, ventes, achats) {
  
+const ventesHtml = ventes.length > 0 
+    ? ventes.map(v => `<li style="color: #d9534f;">❌ <b>Vendu</b> : ${v.symbol} à ${v.price}$</li>`).join('')
+    : "<li>Aucune vente effectuée.</li>";
+
+  // 2. On crée le texte pour les achats
+  const achatsHtml = achats.length > 0 
+    ? achats.map(a => `<li style="color: #5cb85c;">✅ <b>Acheté</b> : ${a.symbol} à ${a.price}$</li>`).join('')
+    : "<li>Aucun nouvel achat.</li>";
+
+  // 3. Le tableau du Top 3
   const tableRows = top3.map(stock => `
     <tr>
       <td style="border: 1px solid #ddd; padding: 8px;"><b>${stock.Symbol}</b></td>
       <td style="border: 1px solid #ddd; padding: 8px;">${stock.Name}</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Price}</td>
+      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Price}$</td>
       <td style="border: 1px solid #ddd; padding: 8px; color: green;">${stock.Momentum}</td>
     </tr>
   `).join('');
 
   const htmlContent = `
-    <h2>🏆 Top 3 Momentum - Rapport Hebdomadaire</h2>
-    <p>Voici les meilleures opportunités détectées par ton scanner :</p>
-    <table style="width: 100%; border-collapse: collapse;">
-      <thead>
-        <tr style="background-color: #f2f2f2;">
-          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Symbole</th>
-          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nom</th>
-          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Prix</th>
-          <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Momentum</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tableRows}
-      </tbody>
-    </table>
-    <p><br><i>Ce rapport a été généré automatiquement par ton programme.</i></p>
+    <div style="font-family: Arial, sans-serif; color: #333;">
+      <h2>📊 Rapport d'Activité du Bot</h2>
+      
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <h3>🔄 Mouvements du jour :</h3>
+        <ul style="list-style: none; padding-left: 0;">
+          ${ventesHtml}
+          ${achatsHtml}
+        </ul>
+      </div>
+
+      <h3>🏆 Top 3 Momentum Actuel :</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background-color: #f2f2f2;">
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Symbole</th>
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nom</th>
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Prix</th>
+            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Momentum</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      <p><br><i>Ce rapport a été généré automatiquement par ton programme.</i></p>
+    </div>
   `;
 
   try {
     const data = await resend.emails.send({
       from: 'MomentumScanner <onboarding@resend.dev>',
       to: ['dedieuclementpro@gmail.com'], 
-      subject: '📊 Ton Rapport Momentum Hebdomadaire',
+      subject: `📊 Bot : ${achats.length} achats / ${ventes.length} ventes`,
       html: htmlContent,
     });
-    console.log("📧 Email envoyé avec succès !", data.id);
+    console.log("📧 Email détaillé envoyé avec succès !", data.id);
   } catch (error) {
     console.error("❌ Erreur lors de l'envoi de l'email :", error);
   }
@@ -114,12 +135,15 @@ async function startAnalysis() {
     // 2. S&P 500 RECOVERY
     const sp500 = await fetchFromAPI("sp500_constituent");
     if (!sp500) return;
+
+    
+    const testStocks = sp500.slice(0, 10);
        
     let results = [];
     console.log(`🔍 Launching momentum analysis on ${sp500.length} stocks...`);
 
     // 3. SCAN OF 503 STOCKS
-    for (const stock of sp500) {
+    for (const stock of testStocks) {
       const data = await fetchFromAPI("historical-price-full", stock.symbol);
       if (data && data.historical && data.historical.length > 0) {
         const score = calculateMomentumScore(data.historical); 
@@ -145,8 +169,10 @@ async function startAnalysis() {
     console.table(top3);
 
     const BUDGET_TOTAL = 1500;
-    const BUDGET_PAR_ACTION = BUDGET_TOTAL / 3;
+    const BUDGET_PAR_ACTION = 500;
     const today = new Date().toISOString().split('T')[0];
+    let ventesDuJour = [];
+    let achatsDuJour = [];
 
     //CHECKING OPEN POSITIONS TO SELL IF NEEDED
 
@@ -166,6 +192,8 @@ async function startAnalysis() {
           WHERE id = ?`,
           [sellPrice, today, position.id]
         );
+
+        ventesDuJour.push({ symbol: position.symbol, price: sellPrice });
         console.log(`⚠️ VENDU : ${position.symbol} (sorti du Top 3)`);
       }
     }
@@ -187,11 +215,14 @@ async function startAnalysis() {
                 VALUES (?, ?, ?, ?, ?, ?)`,
                 [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
           );
+
+          achatsDuJour.push({ symbol: stock.Symbol, price: stock.Price });
+
           console.log(`🛒 NOUVEL ACHAT : ${stock.Symbol}`);
         }
     }
 
-    await envoyerEmailRapport(top3);
+    await envoyerEmailRapport(top3, ventesDuJour, achatsDuJour);
 
   console.log("Analysis and update successfully completed.");
 
