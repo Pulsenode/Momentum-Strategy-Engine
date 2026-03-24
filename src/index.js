@@ -64,7 +64,7 @@ const erreursHtml = erreurs.length > 0
     ? erreurs.map(e => `<li style="color: #f0ad4e;">⚠️ <b>Budget insuffisant</b> : ${e.symbol} (Prix: ${e.price}$)</li>`).join('')
     : "";
 
-  // 3. Le tableau du Top 3
+  // 3. Top 3 Table HTML
   const tableRows = top3.map(stock => `
     <tr>
       <td style="border: 1px solid #ddd; padding: 8px;"><b>${stock.Symbol}</b></td>
