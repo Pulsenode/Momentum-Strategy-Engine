@@ -134,7 +134,24 @@ async function startAnalysis() {
       database: 'MSE'
     });
 
-    console.log("🚀 Connexion réussie à MariaDB ! ID :", connection.threadId);
+    console.log("🚀 Connexion réussie à MYSQL ! ID :", connection.threadId);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS TRADES_HISTORY (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        symbol VARCHAR(10) NOT NULL,
+        buy_price DECIMAL(10,2) NOT NULL,
+        sell_price DECIMAL(10,2),
+        quantity INT NOT NULL,
+        status VARCHAR(10) NOT NULL,
+        entry_date DATE,
+        exit_date DATE,
+        momentum_score FLOAT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );` 
+    );
+
+    console.log("✅ Table TRADES_HISTORY ready");
 
     // 2. S&P 500 RECOVERY
     const sp500 = await fetchFromAPI("sp500_constituent");
