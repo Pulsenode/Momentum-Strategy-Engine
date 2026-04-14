@@ -1,6 +1,15 @@
 require('dotenv').config();
 
 const mysql = require('mysql2/promise');
+const { sendReportEmail } = require('./services/email.service');
+const {
+  createTradeTable,
+  getOpenPositions,
+  closePosition,
+  createPosition,
+  findOpenPositionBySymbol
+} = require('./repositories/trade.repo');
+
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
 const BUDGET_PAR_ACTION = 10000; // Temporary
@@ -45,79 +54,6 @@ function calculateMomentumScore(history) {
 }
 
 
-
-// EMAIL TESTING WITH RESEND
-const { Resend } = require('resend');
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-async function envoyerEmailRapport(top3, ventes, achats, erreurs) {
- 
-const ventesHtml = ventes.length > 0 
-    ? ventes.map(v => `<li style="color: #d9534f;">❌ <b>Vendu</b> : ${v.qty} x ${v.symbol} à ${v.price}$</li>`).join('')
-    : "<li>Aucune vente effectuée.</li>";
-
-const achatsHtml = achats.length > 0 
-    ? achats.map(a => `<li style="color: #5cb85c;">✅ <b>Acheté</b> : ${a.qty} x ${a.symbol} à ${a.price}$</li>`).join('')
-    : "<li>Aucun nouvel achat.</li>";
-
-const erreursHtml = erreurs.length > 0 
-    ? erreurs.map(e => `<li style="color: #f0ad4e;">⚠️ <b>Budget insuffisant</b> : ${e.symbol} (Prix: ${e.price}$)</li>`).join('')
-    : "";
-
-  // 3. Top 3 Table HTML
-  const tableRows = top3.map(stock => `
-    <tr>
-      <td style="border: 1px solid #ddd; padding: 8px;"><b>${stock.Symbol}</b></td>
-      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Name}</td>
-      <td style="border: 1px solid #ddd; padding: 8px;">${stock.Price}$</td>
-      <td style="border: 1px solid #ddd; padding: 8px; color: green;">${stock.Momentum}</td>
-    </tr>
-  `).join('');
-
-const htmlContent = `
-    <div style="font-family: Arial, sans-serif; color: #333;">
-      <h2>📊 Rapport d'Activité du Bot</h2>
-      
-      <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <h3>🔄 Mouvements du jour :</h3>
-        <ul style="list-style: none; padding-left: 0;">
-          ${ventesHtml}
-          ${achatsHtml}
-          ${erreursHtml}  </ul>
-      </div>
-
-      <h3>🏆 Top 3 Momentum Actuel :</h3>
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="background-color: #f2f2f2;">
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Symbole</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Nom</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Prix</th>
-            <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Momentum</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
-      <p><br><i>Ce rapport a été généré automatiquement par ton programme.</i></p>
-    </div>
-  `;
-
-  try {
-    const data = await resend.emails.send({
-      from: 'MomentumScanner <onboarding@resend.dev>',
-      to: ['dedieuclementpro@gmail.com'], 
-      subject: `📊 Bot : ${achats.length} achats / ${ventes.length} ventes`,
-      html: htmlContent,
-    });
-    console.log("📧 Email détaillé envoyé avec succès !", data.id);
-  } catch (error) {
-    console.error("❌ Erreur lors de l'envoi de l'email :", error);
-  }
-}
-
-
 // 3. ANALYSIS
 
 async function startAnalysis() {
@@ -136,22 +72,11 @@ async function startAnalysis() {
 
     console.log("🚀 Connexion réussie à MYSQL ! ID :", connection.threadId);
 
+    await createTradeTable(connection);
 
-    //Checking if tables exists
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS TRADES_HISTORY (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        symbol VARCHAR(10) NOT NULL,
-        buy_price DECIMAL(10,2) NOT NULL,
-        sell_price DECIMAL(10,2),
-        quantity INT NOT NULL,
-        status VARCHAR(10) NOT NULL,
-        entry_date DATE,
-        exit_date DATE,
-        momentum_score FLOAT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );` 
-    );
+    const openPositions = await getOpenPositions(connection);
+
+    
 
     console.log("✅ Table TRADES_HISTORY ready");
 
@@ -163,7 +88,7 @@ async function startAnalysis() {
     const testStocks = sp500.slice(0, 10);
        
     let results = [];
-    console.log(`🔍 Launching momentum analysis on ${sp500.length} stocks...`);
+    console.log(`Launching momentum analysis on ${testStocks.length} stocks...`);
 
     // 3. SCAN OF 503 STOCKS
     for (const stock of testStocks) {
@@ -199,9 +124,6 @@ async function startAnalysis() {
 
     //CHECKING OPEN POSITIONS TO SELL IF NEEDED
 
-    const [openPositions] = await connection.execute(
-    "SELECT * FROM TRADES_HISTORY WHERE status = 'OPEN'"
-    );
     for (const position of openPositions) {
       const stillInTop3 = top3.find(s => s.Symbol === position.symbol);
 
@@ -209,12 +131,7 @@ async function startAnalysis() {
         const currentData = results.find(r => r.Symbol === position.symbol);
         const sellPrice = currentData ? currentData.Price : position.buy_price;
 
-        await connection.execute(
-          `UPDATE TRADES_HISTORY 
-          SET sell_price = ?, status = 'CLOSED', exit_date = ? 
-          WHERE id = ?`,
-          [sellPrice, today, position.id]
-        );
+        await closePosition(connection, sellPrice, today, position.id);
 
           ventesDuJour.push({ 
       symbol: position.symbol, 
@@ -229,10 +146,9 @@ async function startAnalysis() {
     // CHEKING STOCKS POSITION TO AVOID DUPLICATE PURCHASES
 
     for (const stock of top3) {
-        const [existing] = await connection.execute(
-          "SELECT id FROM TRADES_HISTORY WHERE symbol = ? AND status = 'OPEN'",
-          [stock.Symbol]
-        );
+
+        const existing = await findOpenPositionBySymbol(connection, stock.Symbol);
+
         if (existing.length > 0) {
           console.log(`⏭️  ${stock.Symbol} est déjà en portefeuille, on ne fait rien.`);
         } else {
@@ -240,11 +156,8 @@ async function startAnalysis() {
           const quantity = Math.floor(BUDGET_PAR_ACTION / stock.Price);
 
          if (quantity > 0) {
-            await connection.execute(
-                  `INSERT INTO TRADES_HISTORY (symbol, buy_price, quantity, status, entry_date, momentum_score) 
-                  VALUES (?, ?, ?, ?, ?, ?)`,
-                  [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
-            );
+
+            await createPosition(connection, stock, quantity, today);
 
             achatsDuJour.push({ 
                 symbol: stock.Symbol, 
@@ -261,7 +174,7 @@ async function startAnalysis() {
         }
     }
 
-    await envoyerEmailRapport(top3, ventesDuJour, achatsDuJour, erreursBudget);
+    await sendReportEmail(top3, ventesDuJour, achatsDuJour, erreursBudget);
   console.log("Analysis and update successfully completed.");
 
     // 6. SENDING THE REPORT BY EMAIL
@@ -275,17 +188,7 @@ async function startAnalysis() {
     if (error.code && (error.code.includes('ER_') || error.code === 'ECONNREFUSED')) {
       console.log("📧 Envoi de l'alerte mail...");
       
-      await resend.emails.send({
-        from: 'MomentumScanner <onboarding@resend.dev>',
-        to: ['dedieuclementpro@gmail.com'], 
-        subject: '⚠️ ALERTE : Erreur de connexion Base de Données',
-        html: `
-          <h1>Problème sur ton Bot Momentum</h1>
-          <p>Le programme s'est arrêté car il ne peut pas se connecter à MariaDB.</p>
-          <p><b>Erreur :</b> ${error.message}</p>
-          <p>Date : ${new Date().toLocaleString()}</p>
-        `,
-      });
+      await sendReportEmail([], [], [], []);
 
       console.log("🛑 Programme stoppé suite à l'erreur DB.");
       process.exit(1);
