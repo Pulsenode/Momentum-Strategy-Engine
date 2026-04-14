@@ -3,7 +3,7 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
-const BUDGET_PAR_ACTION = 10000;
+const BUDGET_PAR_ACTION = 10000; // Temporary
 
 
 
@@ -125,17 +125,19 @@ async function startAnalysis() {
 
   let connection; 
 
+  //Coneection info for the DATABASE
   try {
- 
     connection = await mysql.createConnection({
-      host: 'localhost',
-      user: 'root',
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
       password: process.env.DB_PASSWORD, 
-      database: 'MSE'
+      database: 'MSE',
     });
 
     console.log("🚀 Connexion réussie à MYSQL ! ID :", connection.threadId);
 
+
+    //Checking if tables exists
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS TRADES_HISTORY (
         id INT AUTO_INCREMENT PRIMARY KEY,
