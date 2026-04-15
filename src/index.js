@@ -1,7 +1,7 @@
-require('dotenv').config();
+require('dotenv').config(); //Login info to database and API
 
-const mysql = require('mysql2/promise');
-const { sendReportEmail } = require('./services/email.service');
+const mysql = require('mysql2/promise'); //SQL
+const { sendReportEmail } = require('./services/email.service');//sending Email
 const {
   createTradeTable,
   getOpenPositions,
@@ -12,12 +12,14 @@ const {
 
 const API_KEY = process.env.API_KEY;
 const BASE_URL = "https://financialmodelingprep.com/api/v3/";
-const BUDGET_PAR_ACTION = 10000; // Temporary
+const BUDGET_PAR_ACTION = 10000; // Temporary 
 
 
 
 
 // 1. DATA RECOVERY
+
+//fetchFromAPI = object from Financial Modeling Grep
 async function fetchFromAPI(endpoint, symbol = "") {
   try {
     const url = `${BASE_URL}${endpoint}${symbol ? `/${symbol}` : ''}?apikey=${API_KEY}`;
@@ -70,13 +72,11 @@ async function startAnalysis() {
       database: process.env.DB_DATABASE,
     });
 
-    console.log("🚀 Connexion réussie à MYSQL ! ID :", connection.threadId);
+    console.log("🚀 Successfully connected to MySQL! ID:", connection.threadId);
 
-    await createTradeTable(connection);
+    await createTradeTable(connection);//From trade.repo.js
 
-    const openPositions = await getOpenPositions(connection);
-
-    
+    const openPositions = await getOpenPositions(connection);//From trade.repo.js
 
     console.log("✅ Table TRADES_HISTORY ready");
 
@@ -85,7 +85,7 @@ async function startAnalysis() {
     if (!sp500) return;
 
     
-    const testStocks = sp500.slice(0, 10);
+    const testStocks = sp500.slice(0, 10);//Scanning limit (e.g 10 first stocks)
        
     let results = [];
     console.log(`Launching momentum analysis on ${testStocks.length} stocks...`);
@@ -150,7 +150,7 @@ async function startAnalysis() {
         const existing = await findOpenPositionBySymbol(connection, stock.Symbol);
 
         if (existing.length > 0) {
-          console.log(`⏭️  ${stock.Symbol} est déjà en portefeuille, on ne fait rien.`);
+          console.log(`⏭️  ${stock.Symbol} is already in the portfolio, we don't do anything.`);
         } else {
 
           const quantity = Math.floor(BUDGET_PAR_ACTION / stock.Price);
@@ -165,11 +165,11 @@ async function startAnalysis() {
                 qty: quantity 
             });
 
-            console.log(`🛒 NOUVEL ACHAT : ${quantity} x ${stock.Symbol}`);
+            console.log(`🛒 New Purchase : ${quantity} x ${stock.Symbol}`);
           } else {
 
             erreursBudget.push({ symbol: stock.Symbol, price: stock.Price });
-            console.log(`⚠️ Budget trop faible pour acheter ${stock.Symbol} (Prix: ${stock.Price}$, Budget: ${BUDGET_PAR_ACTION}$)`);
+            console.log(`⚠️ Budget too low to buy ${stock.Symbol} (Prix: ${stock.Price}$, Budget: ${BUDGET_PAR_ACTION}$)`);
           }
         }
     }
@@ -180,17 +180,17 @@ async function startAnalysis() {
     // 6. SENDING THE REPORT BY EMAIL
 
   } catch (error) {
-    console.error("❌ Erreur :");
+    console.error("❌ Error :");
     console.error("Code :", error.code);
     console.error("Message :", error.message);
 
     // If the error comes from the database (Code ER_ACCESS_DENIED_ERROR, ECONNREFUSED, etc.)
     if (error.code && (error.code.includes('ER_') || error.code === 'ECONNREFUSED')) {
-      console.log("📧 Envoi de l'alerte mail...");
+      console.log("📧 Sending the email alert...");
       
-      await sendReportEmail([], [], [], []);
+      await sendReportEmail([], [], [], []);//Temporary
 
-      console.log("🛑 Programme stoppé suite à l'erreur DB.");
+      console.log("⚠️Program terminated due to a database error.");
       process.exit(1);
     }
 
@@ -198,7 +198,7 @@ async function startAnalysis() {
 } finally {
     if (connection) {
       await connection.end();
-      console.log("🔌 Connexion fermée.");
+      console.log("🔌 Login closed.");
     }
   }
 }
