@@ -1,114 +1,259 @@
+
+---
+
 # Momentum-Strategy-Engine
-Algorithmic trading system built with Node.js that retrieves market data, computes momentum factors across S&amp;P 500 equities, and executes systematic trading strategies.
 
-## 🚀Features
-* Collect stock market data from the S&P 500
-* Identify the top 3 stocks based on the Momentum
-* Send email to inform the users about stocks ranking 
-* The results will be displayed once per week
+Algorithmic trading system built with Node.js that retrieves market data, computes momentum factors across S&P 500 equities, and executes systematic, data-driven analysis.
 
-## 📅Project Overview
+---
 
-This project was created to automatically identify the top stocks from the S&P 500.
+## Features
 
-The main goal is to reduce psychological bias in investments decisions by relying on data-driven analysis rather than emotions.
-The program also helps usrs save time and focus on the most relevant opportunities.
+* Retrieve S&P 500 market data via external API
+* Compute momentum scores (1M / 3M / 6M)
+* Rank and select Top 3 stocks
+* Execute automated trading logic (buy/sell)
+* Prevent duplicate executions using weekly signals tracking
+* Store trading results and performance metrics in MySQL
+* Manage users for report distribution
+* Send automated email reports
+* Structured logging system
+* Data validation layer
+* CLI output with console.table
 
-#### This project is designed as a learning experience and should not be considered financial advice.
+---
 
-## 📋Installation
+## Project Overview
 
-This are the necessary packages to install in order to use the program:
+This project was designed to automatically identify high-momentum stocks from the S&P 500 using a structured and repeatable process.
+
+The main objective is to reduce psychological bias in investment decisions by relying entirely on quantitative analysis rather than emotions.
+
+It also acts as a time-saving tool by filtering hundreds of stocks down to only the most relevant opportunities.
+
+This project is part of my learning journey in software engineering and algorithmic systems.
+
+> This tool is for educational purposes only and should not be considered financial advice.
+
+---
+
+## Tech Stack
+
+* Node.js (ES6+)
+* MySQL (via `mysql2`)
+* Resend (email API)
+* External financial data API (market data provider)
+
+---
+
+## Project Structure
+
+```
+Momentum-Strategy-Engine/
+│
+├── database/
+│   └── schema.sql
+│
+├── src/
+│
+│   ├── config/
+│   │   └── db.js              # Database connection logic
+│
+│   ├── repositories/         # Database queries
+│   │   ├── signal.repo.js
+│   │   ├── result.repo.js
+│   │   ├── trade.repo.js
+│   │   └── user.repo.js
+│
+│   ├── services/             # Business logic
+│   │   ├── scan.service.js
+│   │   ├── trade.service.js
+│   │   ├── report.service.js
+│   │   └── email.service.js
+│
+│   ├── utils/                # Reusable helpers
+│   │   ├── throttle.js
+│   │   ├── validation.js
+│   │   ├── format.js
+│   │   └── logger.js
+│
+│   └── index.js              # Entry point (orchestrator)
+│
+├── .env
+├── .env.example
+├── package.json
+└── README.md
+```
+
+---
+
+## Installation
+
+Clone the repository and install dependencies:
 
 ```
 npm install
 ```
-To install addiotional package 
+
+---
+
+## Environment Variables
+
+Create a `.env` file at the root of the project:
+
+```
+RESEND_API_KEY=your_api_key
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=momentum_db
+```
+
+---
+
+## Database Setup
+
+Make sure your MySQL server is running.
+
+You can either create the database manually:
+
+```sql
+CREATE DATABASE momentum_db;
+```
+
+Or handle it directly in your Node.js code using `CREATE TABLE IF NOT EXISTS` for automatic initialization.
+
+---
+
+## Usage
+
+Start the application:
 
 ```
 npm start
 ```
-To start the program
 
-```
-npm install resend
-```
-To install Resend for sending e-mail 
+The program will:
 
-```
-npm install mysql2
-```
-To install mysql for the database 
+1. Fetch S&P 500 market data
+2. Filter invalid or insufficient data
+3. Compute momentum scores
+4. Rank the top 3 stocks
+5. Store results in the database
+6. Display results in the terminal
+7. Send an email report
+
+---
+
+## Core Logic
+
+### Data Pipeline
+
+* Fetch historical price data
+* Apply validation filters (minimum 6 months / 126 trading days)
+* Compute momentum scores
+* Rank and select top performers
+
+### Momentum Strategy
+
+The algorithm combines:
+
+* Short-term performance (1 month)
+* Medium-term performance (6 months)
+
+This helps reduce noise and identify consistent upward trends.
+
+---
+
+## Technical Highlights
+
+### Asynchronous Processing
+
+* Uses `async/await` to handle multiple API calls efficiently
+* Prevents blocking the main execution thread
+
+### Rate Limiting Handling
+
+* Custom throttle implemented (200ms delay)
+* Prevents API rate limit issues
+
+### Data Validation
+
+* Excludes incomplete or invalid stocks
+* Ensures consistency in calculations
+
+### Dual Data Representation
+
+* `rawScore`: used for sorting and calculations
+* `formattedScore`: used for display and reporting
+
+### CLI Output
+
+* Uses `console.table()` for clean, readable output
+
+---
+
+## What I Learned
+
+### JavaScript & System Design
+
+* Writing structured and modular code
+* Managing async workflows with `async/await`
+* Understanding execution flow in real-world applications
+
+### Data Handling
+
+* Transforming raw API data into usable insights
+* Working with arrays and sorting algorithms
+
+### Backend Development
+
+* Integrating a MySQL database
+* Structuring services and utilities
+
+### Error Handling
+
+* Building resilient systems using `try/catch`
+* Preventing crashes from API or data issues
+
+### Real-World Constraints
+
+* Handling API rate limits
+* Debugging scope and data flow issues
+
+---
+
+## Future Improvements
+
+* Multi-strategy support
+* Portfolio management per strategy
+* Backtesting engine
+* Web dashboard (visualization)
+* Cloud deployment with cron jobs
+* Advanced logging and monitoring
+* Risk management system
+
+---
+
+## License & Financial Disclaimer
+
+### License
+
+Copyright (c) 2026 Clement Dedieu
+All rights reserved.
+
+This project is strictly private. No part of this code may be copied, modified, distributed, or used without explicit written permission.
 
 
 
-## 📝The process
+### Financial Disclaimer
 
-Firstly, i started by structuring my code in three distinct section, data fetching, mathematical processing, and analytical process. I have implemented asynchronos fonction and keyword await to manage multiple network requests without blocking the main execution thread.
+Trading and investing involve significant risk.
 
-During the process i have encounter an API Rate Limiting, to solve this problem i have implemented a custom throttle (200ms sleep timer) between API calls.
-Debugged complex variable scope issues (closures abd block scopes) to ensure data remained accessible across the entire analysis process
+* This project does NOT provide financial advice
+* All results are for educational purposes only
+* The author is not responsible for any financial losses
+* Data accuracy is not guaranteed (third-party APIs)
 
-To check the data validation, i have implemented safety checks to exclude empty stocks or newly listed comapnies with insufficient historical data 
-(less than 6 months/126 trading days).
-
-The next step was to store the data by adding the object "results" and creating a "dual score" system: using a rawScore for prices mathematical sorting and a formatted string (with symbols and rounded decimals) for the user interface.
-
-I have also integrated a console.table() for the top 3 stocks, prodviding a clean, spreadsheet-like view of the top 3 recommendations including Symbol, Name, Price and Momentum Score.
-In the continuity, i have implemented an e-mail system that sends automatically a report of the top 3 recomendations of S&P 500.
-
-
-
-## 🧠What I Learned 
-
-Throughout this project, i have gathered multiple important skills and a better idea of the logic behind a program srtucture which improved my logical thinking:
-
-#### 🧑‍💻Advanced JavaScript (ES6+) & Logic Flow
-
-* **Asynchronous Programming:** Execution of non-blocking code using async/await to handle external API latency.
-
-* **Data Structure Manipulation:** Array methods like .slice(), .sort(), and .push() to transform raw JSON data into actionable insights.
-
-#### 🗄️ API Management & System Resilience
-
-* **Error Handling Strategy:** Try/catch blocks to ensure the application continues running even if a specific data points are missing or network errors occur.
-
-#### 🧠 Financial Engineering Logic
-
-* **Algorithm Development:** Momentum algorithm that balances short-term (1 month) and medium-term (6 months) trends to filter out market noise.
-
-#### 🔨 Developer Experience (DX) & Tooling
-
-* **CLI Data Visualization:** Console.table() to create professional, scannable terminal reports.
-
-
-## ⚖️ License & Financial Disclaimer (IMPORTANT)
-
-### 🔒 Proprietary License
-**Copyright (c) 2026 [Clement Dedieu] - All rights reserved.**
-
-* **Strictly Private**: This project is a personal portfolio piece.
-
-* **No Authorization**: No one is authorized to copy, modify, distribute, or use this software or its source code for any purpose (private, educational, or commercial) without explicit written permission from the author.
-  
-* **Access**: Permission to view the code on GitHub does not constitute a license to use it.
-
-### ⚠️ Financial Disclaimer
-**Trading and investing in the stock market involve a high risk of financial loss.**
-
-* **Not Financial Advice**: The results, scores, and data generated by this program are for **informational and educational purposes only**. They do not constitute financial, investment, or legal advice.
-  
-* **No Liability**: The author ( [Clement Dedieu] ) shall not be held responsible for any financial losses, costs, or damages resulting from the use of this program. This program is used at the user's own risk.
-  
-* **Personal Use Only**: I developed this tool for my own personal reasons and research first. I do not encourage, incite, or recommend anyone to invest money in the stock market based on this tool.
-  
-* **Data Accuracy**: Financial data is provided "as is" by third-party APIs. I do not guarantee the accuracy or reliability of the results.
-
-
-
-
-
-
-
-
+---
 

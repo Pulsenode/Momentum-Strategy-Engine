@@ -1,25 +1,11 @@
-// CREATE TABLE
-async function createTradeTable(connection) {
-  await connection.execute(`
-    CREATE TABLE IF NOT EXISTS TRADES_HISTORY (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      symbol VARCHAR(10) NOT NULL,
-      buy_price DECIMAL(10,2) NOT NULL,
-      sell_price DECIMAL(10,2),
-      quantity INT NOT NULL,
-      status VARCHAR(10) NOT NULL,
-      entry_date DATE,
-      exit_date DATE,
-      momentum_score FLOAT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-}
+const { isValidStock } = require('../utils/validation');
+
 
 // GET OPEN POSITIONS
 async function getOpenPositions(connection) {
   const [rows] = await connection.execute(
-    "SELECT * FROM TRADES_HISTORY WHERE status = 'OPEN'"
+    "SELECT * FROM POSITIONS WHERE status = 'OPEN' AND strategy_id = ?",
+    [1]
   );
   return rows;
 }
@@ -27,7 +13,7 @@ async function getOpenPositions(connection) {
 // CLOSE POSITION (SELL)
 async function closePosition(connection, sellPrice, today, id) {
   await connection.execute(
-    `UPDATE TRADES_HISTORY 
+    `UPDATE POSITIONS 
      SET sell_price = ?, status = 'CLOSED', exit_date = ? 
      WHERE id = ?`,
     [sellPrice, today, id]
@@ -37,24 +23,24 @@ async function closePosition(connection, sellPrice, today, id) {
 // CREATE POSITION (BUY)
 async function createPosition(connection, stock, quantity, today) {
   await connection.execute(
-    `INSERT INTO TRADES_HISTORY 
-     (symbol, buy_price, quantity, status, entry_date, momentum_score) 
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
+    `INSERT INTO POSITIONS 
+     (strategy_id, symbol, buy_price, quantity, status, entry_date, score_at_entry) 
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [1, stock.Symbol, stock.Price, quantity, 'OPEN', today, stock.rawScore]
   );
 }
 
 // CHECK EXISTING POSITION
 async function findOpenPositionBySymbol(connection, symbol) {
   const [rows] = await connection.execute(
-    "SELECT id FROM TRADES_HISTORY WHERE symbol = ? AND status = 'OPEN'",
-    [symbol]
+    `SELECT id FROM POSITIONS 
+     WHERE symbol = ? AND status = 'OPEN' AND strategy_id = ?`,
+    [symbol, 1]
   );
   return rows;
 }
 
 module.exports = {
-  createTradeTable,
   getOpenPositions,
   closePosition,
   createPosition,

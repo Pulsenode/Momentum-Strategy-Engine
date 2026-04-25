@@ -2,58 +2,28 @@ require('dotenv').config();
 
 const { sendEmail } = require('../integrations/mailer');
 
-async function sendReportEmail(top3, ventes, achats, erreurs) {
+async function sendReportEmail({
+  top3,
+  ventes,
+  achats,
+  erreurs,
+  report,
+  users
+}) {
 
-    const now = new Date().toLocaleString();
-
-    // 📊 CALCULATIONS
-    const totalAchats = achats.reduce((sum, a) => sum + (a.price * a.qty), 0);
-    const totalVentes = ventes.reduce((sum, v) => sum + (v.price * v.qty), 0);
-    const pnl = totalVentes - totalAchats;
+    const pnl = report.pnl;
+    const score = report.score;
+    const insight = report.insight;
+    const bestTrade = report.bestTrade;
+    const worstTrade = report.worstTrade;
+    const riskWarning = report.riskWarning;
 
     const pnlColor = pnl >= 0 ? "#16a34a" : "#dc2626";
     const pnlSign = pnl >= 0 ? "+" : "";
 
-
-    // 🧠 INSIGHT & SUMMARY
-    let insight;
-    if (pnl > 0 && achats.length > ventes.length) {
-        insight = "📈 Aggressive buying paid off today.";
-    } else if (pnl < 0 && ventes.length > achats.length) {
-        insight = "📉 Selling pressure dominated, strategy needs review.";
-    } else {
-        insight = "⚖️ Mixed signals, market uncertain.";
-    }
+    const now = new Date().toLocaleString();
 
 
-    // 🏆 BEST / WORST TRADES
-    const bestTrade = ventes.reduce((best, v) => 
-        (!best || v.price > best.price ? v : best), null);
-    const worstTrade = achats.reduce((worst, a) => 
-        (!worst || a.price > worst.price ? a : worst), null);
-
-
-    // ⚠️ RISK DETECTION
-
-    let riskWarning = "";
-
-    if (erreurs.length > 3) {
-        riskWarning += "⚠️ High number of failed trades. ";
-    }
-
-    if (pnl < -50) {
-        riskWarning += "🚨 Significant loss detected.";
-    }
-
-    // =========================
-    // 🎯 BOT SCORE
-    // =========================
-    let score = 0;
-
-    if (pnl > 0) score += 50;
-    if (achats.length > 0) score += 10;
-    if (ventes.length > 0) score += 10;
-    if (erreurs.length === 0) score += 30;
 
     // =========================
     // 🔄 MOVEMENTS
@@ -168,7 +138,7 @@ async function sendReportEmail(top3, ventes, achats, erreurs) {
     // =========================
     try {
         const data = await sendEmail({
-            to: ['dedieuclementpro@gmail.com'],
+            to: users,
             subject: `📊 Report | PnL ${pnlSign}${pnl.toFixed(2)}$ | Score ${score}/100`,
             html: htmlContent,
         });
