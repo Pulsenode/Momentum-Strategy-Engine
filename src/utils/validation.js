@@ -1,3 +1,5 @@
+// Checking stocks data type
+
 function isValidStock(stock) {
   return (
     stock &&

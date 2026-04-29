@@ -1,9 +1,7 @@
    //CHECKING OPEN POSITIONS TO SELL IF NEEDED
-const {
-  closePosition,
-  createPosition,
-  findOpenPositionBySymbol
-} = require('../repositories/trade.repo');
+
+const { closePosition, createPosition, findOpenPositionBySymbol } = require('../repositories/trade.repo');
+const { isValidStock } = require('../utils/validation');
 const { logTrade } = require('../utils/logger');
 
 async function executeTrades({
@@ -13,13 +11,15 @@ async function executeTrades({
     results,
     budget,
     today,
+    userId,
+    apiKey
 }) {
     let ventesDuJour = [];
     let achatsDuJour = [];
     let erreursBudget = [];
 
     for (const position of openPositions) {
-      const stillInTop3 = top3.find(s => s.Symbol === position.symbol);
+      const stillInTop3 = top3.some(s => s.Symbol === position.symbol);
 
       if (!stillInTop3) {
         const currentData = results.find(r => r.Symbol === position.symbol);
@@ -32,6 +32,10 @@ async function executeTrades({
       price: sellPrice, 
       qty: position.quantity // On récupère la quantité depuis la DB
   });
+
+      if (apiKey) {
+        logTrade(`📡 SignalStack SELL → ${position.symbol} (user ${userId})`);
+      }
         logTrade(`[TRADE] SELL : ${position.symbol} (sorti du Top 3)`);
       }
     }
@@ -40,27 +44,37 @@ async function executeTrades({
     // CHEKING STOCKS POSITION TO AVOID DUPLICATE PURCHASES
 
     for (const stock of top3) {
+      if (!isValidStock(stock)) {
+          continue;
+        }
 
-        const existing = await findOpenPositionBySymbol(connection, stock.Symbol);
+        const existing = await findOpenPositionBySymbol(connection, stock.Symbol, userId);
 
         if (existing.length > 0) {
-          console.log(`⏭️  ${stock.Symbol} is already in the portfolio, we don't do anything.`);
+          logTrade(`⏭️  ${stock.Symbol} is already in the portfolio, we don't do anything.`);
         } else {
 
           const quantity = Math.floor(budget / stock.Price);
 
          if (quantity > 0) {
 
-            await createPosition(connection, stock, quantity, today);
+            await createPosition(connection, stock, quantity, today, userId);
 
             achatsDuJour.push({ 
                 symbol: stock.Symbol, 
                 price: stock.Price, 
                 qty: quantity 
             });
-
+            if (apiKey) {
+              logTrade(`📡 SignalStack BUY → ${stock.Symbol} (user ${userId})`);
+            }
             logTrade(`[TRADE] BUY : ${quantity} x ${stock.Symbol}`);
           } else {
+
+            erreursBudget.push({
+              symbol: stock.Symbol,
+              price: stock.Price
+            });
 
             erreursBudget.push({ symbol: stock.Symbol, price: stock.Price });
             logTrade(`[TRADE] Budget too low to buy ${stock.Symbol} (Prix: ${stock.Price}$, Budget: ${budget}$)`);

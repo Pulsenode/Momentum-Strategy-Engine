@@ -9,7 +9,6 @@ function buildReport({ ventes, achats, erreurs }) {
     const pnlColor = pnl >= 0 ? "#16a34a" : "#dc2626";
     const pnlSign = pnl >= 0 ? "+" : "";
 
-
     // Insight
     let insight;
     if (pnl > 0 && achats.length > ventes.length) {
@@ -20,13 +19,11 @@ function buildReport({ ventes, achats, erreurs }) {
         insight = "⚖️ Mixed signals, market uncertain.";
     }
 
-
     // BEST / WORST TRADES
     const bestTrade = ventes.reduce((best, v) => 
         (!best || v.price > best.price ? v : best), null);
     const worstTrade = achats.reduce((worst, a) => 
         (!worst || a.price > worst.price ? a : worst), null);
-
 
     // RISK DETECTION
     let riskWarning = "";
@@ -34,12 +31,11 @@ function buildReport({ ventes, achats, erreurs }) {
     if (erreurs.length > 3) {
         riskWarning += "⚠️ High number of failed trades. ";
     }
-
     if (pnl < -50) {
         riskWarning += "🚨 Significant loss detected.";
     }
 
-    // BOT SCORE
+    // BOT SCORE 
     let score = 0;
 
     if (pnl > 0) score += 50;
