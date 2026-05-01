@@ -3,17 +3,15 @@ require('dotenv').config(); //Login info to database and API
 const { logInfo, logError, logSuccess } = require('./utils/logger'); // custom logging fucntions
 
 const { runScan } = require('./services/scan.service'); // run stock analysis
-const { hasSignalsThisWeek, insertSignals } = require('./repositories/signal.repo'); //Manage SIGNALS (weekly memory
+const { createSignalsTable, hasSignalsThisWeek, insertSignals } = require('./repositories/signal.repo'); //Manage SIGNALS (weekly memory
 const { executeTrades } = require('./services/trade.service'); // executes BUY / SELL logic
 const { buildReport } = require('./services/report.service'); // manage report calculus
 const { sendReportEmail } = require('./services/email.service');//sending Email
 
 const { createDBConnection } = require('./config/db'); // Central DB connection 
 const { createResultTable, saveResult } = require('./repositories/result.repo'); // Manage RESULTS table 
-const { createUserTable, createUser, getAllUsers } = require('./repositories/user.repo'); // Manage users 
-const { createTradeTable, getOpenPositions } = require('./repositories/trade.repo'); // Get positions per user
-
-const BUDGET_PAR_ACTION = 10000; // Temporary 
+const { createUserTable, getAllUsers } = require('./repositories/user.repo'); // Manage users 
+const {  createPositionsTable, getOpenPositions } = require('./repositories/trade.repo'); // Get positions per user
 
 
 // Main function
@@ -32,7 +30,10 @@ async function startAnalysis() {
     // Ensure tables exists before using them
     await createResultTable(connection);
     await createUserTable(connection);
-    logSuccess("Table POSITIONS + RESULTS + USERS ready");
+    await createSignalsTable(connection);
+    await createPositionsTable(connection);
+
+    logSuccess("Table POSITIONS + RESULTS + SIGNALS + USERS ready");
 
 
     // 3. Market Scanning
@@ -81,6 +82,13 @@ async function startAnalysis() {
     //9. Multi user processis loop
     //Loop through each user
     for (const user of users) {
+          const userId = user.id;
+    if (!userId) {
+      throw new Error(`Invalid user: missing id. User data: ${JSON.stringify(user)}`);
+    }
+    if (user.budget_per_trade === undefined || user.budget_per_trade === null) {
+      throw new Error(`Invalid user: missing budget_per_trade. User data: ${JSON.stringify(user)}`);
+    }
       //get positions specific to THIS user
       const openPositions = await getOpenPositions(connection, user.id);
       // 'executeTrades' performs the trade logic logic:
@@ -93,7 +101,7 @@ async function startAnalysis() {
         results,
         budget: user.budget_per_trade, // user-specific budget
         today,
-        userId: user.id,
+        userId,
         apiKey: user.signalstack_api_key // individual API key for the broker
       });
 
