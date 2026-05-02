@@ -137,16 +137,25 @@ async function sendReportEmail({
     // 📤 SEND EMAIL
     // =========================
     try {
-        const data = await sendEmail({
-            to: users,
-            subject: `📊 Report | PnL ${pnlSign}${pnl.toFixed(2)}$ | Score ${score}/100`,
-            html: htmlContent,
-        });
+    const recipients = users
+        .map(user => user.email)
+        .filter(Boolean);
 
-        console.log("📧 Email sent!", data.id);
+    if (recipients.length === 0) {
+        throw new Error("No email recipients found in USERS table");
+    }
+
+    const data = await sendEmail({
+        to: recipients,
+        subject: `📊 Report | PnL ${pnlSign}${pnl.toFixed(2)}$ | Score ${score}/100`,
+        html: htmlContent,
+    });
+
+    console.log("📧 Email sent to:", recipients.join(", "));
+    console.log("Resend ID:", data.id);
 
     } catch (error) {
-        console.error("❌ Email error:", error);
+    console.error("❌ Email error:", error);
     }
 }
 

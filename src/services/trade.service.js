@@ -12,8 +12,10 @@ async function executeTrades({
     budget,
     today,
     userId,
+    userEmail,
     apiKey
 }) {
+  logTrade(`👤 Processing user=${userId} (${userEmail}) with budget=${budget}`);
     let ventesDuJour = [];
     let achatsDuJour = [];
     let erreursBudget = [];
@@ -25,7 +27,7 @@ async function executeTrades({
         const currentData = results.find(r => r.Symbol === position.symbol);
         const sellPrice = currentData ? currentData.Price : position.buy_price;
 
-        await closePosition(connection, sellPrice, today, position.id);
+        await closePosition(connection, sellPrice, today, position.id, userId);
 
           ventesDuJour.push({ 
       symbol: position.symbol, 
@@ -36,7 +38,7 @@ async function executeTrades({
       if (apiKey) {
         logTrade(`📡 SignalStack SELL → ${position.symbol} (user ${userId})`);
       }
-        logTrade(`[TRADE] SELL : ${position.symbol} (sorti du Top 3)`);
+        logTrade(`[TRADE] SELL user=${userId} (${userEmail}) : ${position.symbol} exited Top 3`);
       }
     }
 
@@ -51,7 +53,7 @@ async function executeTrades({
         const existing = await findOpenPositionBySymbol(connection, stock.Symbol, userId);
 
         if (existing.length > 0) {
-          logTrade(`⏭️  ${stock.Symbol} is already in the portfolio, we don't do anything.`);
+          logTrade(`⏭️  ${stock.Symbol} is already in portfolio for user=${userId} (${userEmail}), skipping.`);
         } else {
 
           const quantity = Math.floor(budget / stock.Price);
@@ -68,7 +70,7 @@ async function executeTrades({
             if (apiKey) {
               logTrade(`📡 SignalStack BUY → ${stock.Symbol} (user ${userId})`);
             }
-            logTrade(`[TRADE] BUY : ${quantity} x ${stock.Symbol}`);
+            logTrade(`📊 [TRADE] BUY user=${userId} (${userEmail}) : ${quantity} x ${stock.Symbol}`);
           } else {
 
             erreursBudget.push({

@@ -102,6 +102,7 @@ async function startAnalysis() {
         budget: user.budget_per_trade, // user-specific budget
         today,
         userId,
+        userEmail: user.email,
         apiKey: user.signalstack_api_key // individual API key for the broker
       });
 
