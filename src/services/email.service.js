@@ -24,28 +24,27 @@ async function sendReportEmail({
     const now = new Date().toLocaleString();
 
 
-
     // =========================
     // 🔄 MOVEMENTS
     // =========================
     const ventesHtml = ventes.length > 0 
         ? ventes.map(v => `
             <li style="margin-bottom:6px;color:#dc2626;">
-                🔴 SELL — ${v.qty} x ${v.symbol} @ ${v.price}$
+                 SELL — ${v.qty} x ${v.symbol} @ ${v.price}$
             </li>`).join('')
         : "<li style='color:#6b7280;'>No sales</li>";
 
     const achatsHtml = achats.length > 0 
         ? achats.map(a => `
             <li style="margin-bottom:6px;color:#16a34a;">
-                🟢 BUY — ${a.qty} x ${a.symbol} @ ${a.price}$
+                 BUY — ${a.qty} x ${a.symbol} @ ${a.price}$
             </li>`).join('')
         : "<li style='color:#6b7280;'>No buys</li>";
 
     const erreursHtml = erreurs.length > 0 
         ? erreurs.map(e => `
             <li style="margin-bottom:6px;color:#f59e0b;">
-                🟠 ERROR — ${e.symbol} (${e.price}$)
+                 ERROR — ${e.symbol} (${e.price}$)
             </li>`).join('')
         : "";
 
@@ -53,7 +52,7 @@ async function sendReportEmail({
     // 📈 TABLE
     // =========================
     const tableRows = top3.map((stock, index) => {
-        const trend = stock.Momentum >= 0 ? "🔼" : "🔽";
+        const trend = stock.Momentum >= 0 ? "I" : "D";
         const trendColor = stock.Momentum >= 0 ? "#16a34a" : "#dc2626";
 
         return `
@@ -68,7 +67,7 @@ async function sendReportEmail({
     }).join('');
 
     // =========================
-    // 📧 EMAIL TEMPLATE
+    // EMAIL TEMPLATE
     // =========================
     const htmlContent = `
     <div style="font-family:Arial;background:#f4f6f8;padding:20px;">
@@ -76,7 +75,7 @@ async function sendReportEmail({
 
             <!-- HEADER -->
             <div style="background:#111827;color:white;padding:20px;text-align:center;">
-                <h2>📊 Momentum Bot</h2>
+                <h2> Momentum Bot</h2>
                 <p>${now}</p>
             </div>
 
@@ -102,8 +101,8 @@ async function sendReportEmail({
 
             <!-- BEST / WORST -->
             <div style="padding:20px;">
-                <p><b>🏆 Best Trade:</b> ${bestTrade ? `${bestTrade.symbol} @ ${bestTrade.price}$` : "N/A"}</p>
-                <p><b>❌ Worst Buy:</b> ${worstTrade ? `${worstTrade.symbol} @ ${worstTrade.price}$` : "N/A"}</p>
+                <p><b> Best Trade:</b> ${bestTrade ? `${bestTrade.symbol} @ ${bestTrade.price}$` : "N/A"}</p>
+                <p><b> Worst Buy:</b> ${worstTrade ? `${worstTrade.symbol} @ ${worstTrade.price}$` : "N/A"}</p>
             </div>
 
             <!-- MOVEMENTS -->
@@ -145,17 +144,18 @@ async function sendReportEmail({
         throw new Error("No email recipients found in USERS table");
     }
 
-    const data = await sendEmail({
-        to: recipients,
-        subject: `📊 Report | PnL ${pnlSign}${pnl.toFixed(2)}$ | Score ${score}/100`,
+    for (const email of recipients) {
+        const data = await sendEmail({
+        to: email,
+        subject: `Report | PnL ${pnlSign}${pnl.toFixed(2)}$ | Score ${score}/100`,
         html: htmlContent,
-    });
-
-    console.log("📧 Email sent to:", recipients.join(", "));
-    console.log("Resend ID:", data.id);
+        });
+        console.log(`Email sent to: ${email}`);
+        console.log("Mailer response:", data);
+    }
 
     } catch (error) {
-    console.error("❌ Email error:", error);
+    console.error("Email error:", error);
     }
 }
 

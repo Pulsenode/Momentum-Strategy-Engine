@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "dotenv": "^17.2.3",
+    "https": "^1.0.0",
     "mysql2": "^3.16.1",
     "resend": "^6.7.0"
   }

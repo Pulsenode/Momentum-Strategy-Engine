@@ -12,11 +12,11 @@ function buildReport({ ventes, achats, erreurs }) {
     // Insight
     let insight;
     if (pnl > 0 && achats.length > ventes.length) {
-        insight = "📈 Aggressive buying paid off today.";
+        insight = " Aggressive buying paid off today.";
     } else if (pnl < 0 && ventes.length > achats.length) {
-        insight = "📉 Selling pressure dominated, strategy needs review.";
+        insight = " Selling pressure dominated, strategy needs review.";
     } else {
-        insight = "⚖️ Mixed signals, market uncertain.";
+        insight = " Mixed signals, market uncertain.";
     }
 
     // BEST / WORST TRADES
@@ -29,10 +29,10 @@ function buildReport({ ventes, achats, erreurs }) {
     let riskWarning = "";
 
     if (erreurs.length > 3) {
-        riskWarning += "⚠️ High number of failed trades. ";
+        riskWarning += " High number of failed trades. ";
     }
     if (pnl < -50) {
-        riskWarning += "🚨 Significant loss detected.";
+        riskWarning += " Significant loss detected.";
     }
 
     // BOT SCORE 
