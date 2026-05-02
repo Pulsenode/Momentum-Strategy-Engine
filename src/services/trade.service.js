@@ -30,9 +30,11 @@ async function executeTrades({
         await closePosition(connection, sellPrice, today, position.id, userId);
 
           ventesDuJour.push({ 
-      symbol: position.symbol, 
-      price: sellPrice, 
-      qty: position.quantity // On récupère la quantité depuis la DB
+            userId,
+            userEmail,
+            symbol: position.symbol, 
+            price: sellPrice, 
+            qty: position.quantity // On récupère la quantité depuis la DB
   });
 
       if (apiKey) {
@@ -63,6 +65,8 @@ async function executeTrades({
             await createPosition(connection, stock, quantity, today, userId);
 
             achatsDuJour.push({ 
+                userId,
+                userEmail,
                 symbol: stock.Symbol, 
                 price: stock.Price, 
                 qty: quantity 
@@ -74,6 +78,8 @@ async function executeTrades({
           } else {
 
             erreursBudget.push({
+              userId,
+              userEmail,
               symbol: stock.Symbol,
               price: stock.Price
             });

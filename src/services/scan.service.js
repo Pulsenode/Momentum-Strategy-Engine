@@ -9,7 +9,7 @@ async function runScan() {
     const sp500 = await fetchFromAPI("sp500_constituent");
     if (!sp500) return { results:[], top3: [] };
 
-    const testStocks = sp500.slice(0, 10);//Scanning limit (e.g 10 first stocks)
+    const testStocks = sp500.slice(0, 15);//Scanning limit "sp500.slice(0, 10)" (e.g 10 first stocks) // sp500; alone to scan all stocks
        
     let results = [];
 
