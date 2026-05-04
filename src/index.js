@@ -13,7 +13,6 @@ const { createResultTable, saveResult } = require('./repositories/result.repo');
 const { createUserTable, getAllUsers } = require('./repositories/user.repo'); // Manage users 
 const {  createPositionsTable, getOpenPositions } = require('./repositories/trade.repo'); // Get positions per user
 
-
 // Main function
 async function startAnalysis() { 
   logInfo(" Stock Analysis starting...");
