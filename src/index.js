@@ -38,7 +38,14 @@ async function startAnalysis() {
     // 3. Market Scanning
     // runScan() likely fetches external market data.
     // 'results' = full data; 'top3' = the specific assets the bot wants to buy this week.
+
+
+  
+
     const { results, top3 } = await runScan();
+
+
+
 
     // 4. Time
     // calculating the current week number to ensure we don't trade multiple times in one week.
