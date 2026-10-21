@@ -35,24 +35,23 @@ async function startAnalysis() {
     logSuccess("Table POSITIONS + RESULTS + SIGNALS + USERS ready");
 
 
-    // 3. Market Scanning
-    // runScan() likely fetches external market data.
-    // 'results' = full data; 'top3' = the specific assets the bot wants to buy this week.
-
-
-  
-
-    const { results, top3 } = await runScan();
-
-
-
-
-    // 4. Time
+    // 3. Time
     // calculating the current week number to ensure we don't trade multiple times in one week.
     const now = new Date(); // current date
     const week = getWeekNumber(now);// convert ot week number
     const year = now.getFullYear();
 
+    const lastYearDate = new Date(now);
+    lastYearDate.setFullYear(year - 1);
+    const yearLast = lastYearDate.getFullYear();
+    const month = String(lastYearDate.getMonth() + 1).padStart(2, '0');
+    const day = String(lastYearDate.getDate()).padStart(2, '0');
+    const lastYearFormattedDate = `${yearLast}-${month}-${day}`; // Format YYYY-MM-DD
+
+    // 4. Market Scanning
+    // runScan() likely fetches external market data.
+    // 'results' = full data; 'top3' = the specific assets the bot wants to buy this week.
+    const { results, top3 } = await runScan(lastYearFormattedDate);
 
     // 5. SAFETY GATE (Empty Data)
     // If the scanner returns nothing, we stop. This prevents the bot from selling

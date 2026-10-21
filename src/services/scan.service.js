@@ -56,7 +56,7 @@ async function getSP500FromGitHub() {
 }
 
 
-async function runScan() {
+async function runScan(fromDate) {
     //const sp500 = await fetchFromAPI("sp500_constituent");
     const sp500 = await getSP500FromGitHub();
 
@@ -67,7 +67,7 @@ async function runScan() {
     let results = [];
 
     for (const stock of testStocks) {
-      const data = await fetchFromAPI("historical-price-full", stock.symbol);
+      const data = await fetchFromAPI("historical-price-full", stock.symbol,fromDate);
       if (data && data.historical && data.historical.length > 0) {
         const score = calculateMomentumScore(data.historical); 
         const lastPrice = data.historical[0].close;            
